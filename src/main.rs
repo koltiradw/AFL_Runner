@@ -73,10 +73,12 @@ fn create_afl_runner(
             .output_dir
             .clone()
             .unwrap_or_else(|| Path::new("/tmp/afl_output").to_path_buf()),
+	gen_args.symqemu_runners.unwrap_or(0),
+	gen_args.path_to_symqemu_mutator.clone().unwrap_or("".to_string()),
         gen_args.dictionary.clone(),
         raw_afl_flags,
-        gen_args.afl_binary.clone(),
-        is_ramdisk,
+        gen_args.afl_binary.clone(),	
+        is_ramdisk,	
     ))
 }
 

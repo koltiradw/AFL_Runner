@@ -132,6 +132,22 @@ pub struct GenArgs {
         help = "Spin up a custom tmux session with the fuzzers",
         required = false
     )]
+    pub symqemu_runners: Option<u32>,
+    /// Number of AFL runners with symqemu mutator
+    #[arg(
+        long,
+	default_value = None,
+        help = "Number of AFL runners with symqemu mutator",
+        required = false
+    )] 
+    pub path_to_symqemu_mutator: Option<String>,
+    /// Path to the symqemu mutator
+    #[arg(
+        long,
+        default_value = None,
+        help = "Path to the symqemu mutator",
+        required = false
+    )] 	
     pub config: Option<PathBuf>,
 }
 
@@ -176,7 +192,14 @@ impl GenArgs {
                 .clone()
                 .or_else(|| config.target.args.clone().filter(|args| !args.is_empty())),
             runners: Some(self.runners.or(config.afl_cfg.runners).unwrap_or(1)),
-            input_dir: self
+	    symqemu_runners: self
+		.symqemu_runners
+		.or_else(|| Some(config.symqemu_cfg.clone().unwrap().runners)),
+	    path_to_symqemu_mutator: self
+		.path_to_symqemu_mutator
+		.clone()
+		.or_else(|| Some(config.symqemu_cfg.clone().unwrap().path_to_symqemu_mutator.clone())),
+	    input_dir: self
                 .input_dir
                 .clone()
                 .or_else(|| {
@@ -317,6 +340,8 @@ impl RunArgs {
 pub struct Config {
     /// Target configuration
     pub target: TargetConfig,
+    /// SymQemu configuration
+    pub symqemu_cfg: Option<SymQemuConfig>,
     /// AFL configuration
     pub afl_cfg: AflConfig,
     /// Session configuration
@@ -338,6 +363,13 @@ pub struct TargetConfig {
     pub cmpc_path: Option<String>,
     /// Arguments for the target binary
     pub args: Option<Vec<String>>,
+}
+
+/// Configuration for SymQemu
+#[derive(Deserialize, Default, Debug, Clone)]
+pub struct SymQemuConfig {
+    pub runners: u32,
+    pub path_to_symqemu_mutator: String, 
 }
 
 /// Configuration for AFL

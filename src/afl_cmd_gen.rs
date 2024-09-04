@@ -161,6 +161,10 @@ pub struct AFLCmdGenerator {
     pub output_dir: PathBuf,
     /// Number of AFL runners
     pub runners: u32,
+    /// Numbers of AFL runners with symqemu mutators
+    pub symqemu_runners: u32,
+    /// Path to the symqemu mutator
+    pub path_to_symqemu_mutator: String,
     /// Path to the dictionary file
     pub dictionary: Option<String>,
     /// Raw AFL flags
@@ -180,6 +184,8 @@ impl AFLCmdGenerator {
         runners: u32,
         input_dir: PathBuf,
         output_dir: PathBuf,
+	symqemu_runners: u32,
+	path_to_symqemu_mutator: String, 
         dictionary: Option<PathBuf>,
         raw_afl_flags: Option<String>,
         afl_binary: Option<String>,
@@ -211,6 +217,8 @@ impl AFLCmdGenerator {
             input_dir,
             output_dir,
             runners,
+	    symqemu_runners,
+	    path_to_symqemu_mutator,
             dictionary: dict,
             raw_afl_flags,
             afl_binary,
@@ -309,7 +317,23 @@ impl AFLCmdGenerator {
             cmd.extend_env(to_apply, true);
         }
 
-        let cmd_strings = cmds.into_iter().map(|cmd| cmd.assemble()).collect();
+        let mut cmd_strings: Vec<String> = cmds.into_iter().map(|cmd| cmd.assemble()).collect();
+	
+	for i in 0..self.symqemu_runners {
+		let afl_binary = self.get_afl_fuzz()?;
+		let target_binary = self.harness.target_binary.clone();
+		let mut cmd = AflCmd::new(afl_binary.clone(), target_binary.clone());
+		cmd.set_input_dir(self.input_dir.clone());
+		cmd.set_output_dir(self.output_dir.clone());
+		cmd.extend_env(vec!(format!("AFL_CUSTOM_MUTATOR_LIBRARY={}", self.path_to_symqemu_mutator)), true);
+		cmd.extend_env(vec!("AFL_DISABLE_TRIM=1".to_string()), false);
+		cmd.extend_env(vec!("SYMQEMU_ALL=1".to_string()), false);
+		cmd.extend_env(vec!("SYMCC_ENABLE_LINEARIZATION=1".to_string()), false);
+		cmd.set_misc_afl_flags(vec!(format!("-S s_{i}_symqemu")));
+		cmd.set_target_args(self.harness.target_args.clone());
+		cmd_strings.push(cmd.assemble());
+	}
+	
         Ok(cmd_strings)
     }
 
